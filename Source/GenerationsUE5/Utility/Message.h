@@ -605,23 +605,6 @@ struct FMsgSonicInit
 
     bool bIsModern;
 };
-
-struct FGensBoneTransform
-{
-    float posX;
-    float posY;
-    float posZ;
-    
-    float rotX;
-    float rotY;
-    float rotZ;
-    float rotW;
-    
-    float sclX;
-    float sclY;
-    float sclZ;
-};
-
 struct FMsgSonicUpdate
 {
     MSG_DEFINE_MESSAGE(FMsgSonicInit);
@@ -632,7 +615,7 @@ struct FMsgSonicUpdate
 
     int boneCount;
     char boneNames[0xFF][0x40];
-    FGensBoneTransform boneTransforms[0xFF];
+    float boneMatrices[0xFF][0x10];
 };
 
 struct FMsgCameraUpdate

@@ -339,6 +339,7 @@ void FGensUpdateThread::procMsgSonicInit()
 
 	AsyncTask(ENamedThreads::GameThread, [&]
 	{
+		if (!IsValid(GensCommon) && IsValid(GensCommon->GetWorld()) && GensCommon->GetWorld()->IsGameWorld()) return;
 		GensCommon->SpawnPlayer(InitMessage.bIsModern);
 	});
 }
@@ -349,15 +350,14 @@ void FGensUpdateThread::procMsgSonicUpdate()
 
 	AsyncTask(ENamedThreads::GameThread, [&]
 	{
+		if (!IsValid(GensCommon) && IsValid(GensCommon->GetWorld()) && GensCommon->GetWorld()->IsGameWorld()) return;
 		if (!IsValid(GensCommon->PlayerPawn) && IsValid(GensCommon)) GensCommon->SpawnPlayer(InitMessage.bIsModern);
 
 		const auto WorldMatrix = FMatrix(
 			FPlane(UpdateMessage.matrix[0], UpdateMessage.matrix[4], UpdateMessage.matrix[8], UpdateMessage.matrix[12]),
 			FPlane(UpdateMessage.matrix[1], UpdateMessage.matrix[5], UpdateMessage.matrix[9], UpdateMessage.matrix[13]),
-			FPlane(UpdateMessage.matrix[2], UpdateMessage.matrix[6], UpdateMessage.matrix[10],
-			       UpdateMessage.matrix[14]),
-			FPlane(UpdateMessage.matrix[3], UpdateMessage.matrix[7], UpdateMessage.matrix[11],
-			       UpdateMessage.matrix[15]));
+			FPlane(UpdateMessage.matrix[2], UpdateMessage.matrix[6], UpdateMessage.matrix[10], UpdateMessage.matrix[14]),
+			FPlane(UpdateMessage.matrix[3], UpdateMessage.matrix[7], UpdateMessage.matrix[11], UpdateMessage.matrix[15]));
 
 		const auto Position = s_TransformMat.TransformPosition(
 			FVector(UpdateMessage.matrix[12], UpdateMessage.matrix[13], UpdateMessage.matrix[14])) * 100;
@@ -369,19 +369,16 @@ void FGensUpdateThread::procMsgSonicUpdate()
 
 		for (int i = 0; i < UpdateMessage.boneCount; i++)
 		{
-			auto Pos = FVector(UpdateMessage.boneTransforms[i].posX, UpdateMessage.boneTransforms[i].posY,
-			                   UpdateMessage.boneTransforms[i].posZ);
-			auto Rot = (s_TransformMat * FQuat(UpdateMessage.boneTransforms[i].rotX,
-			                                  UpdateMessage.boneTransforms[i].rotY,
-			                                  UpdateMessage.boneTransforms[i].rotZ,
-			                                  UpdateMessage.boneTransforms[i].rotW).ToMatrix()).Rotator();
-			auto Scl = FVector(UpdateMessage.boneTransforms[i].sclX, UpdateMessage.boneTransforms[i].sclY,
-			                   UpdateMessage.boneTransforms[i].sclZ);
+			const auto BoneMatrix = FMatrix(
+				FPlane(UpdateMessage.boneMatrices[i][0], UpdateMessage.boneMatrices[i][4], UpdateMessage.boneMatrices[i][8], UpdateMessage.boneMatrices[i][12]),
+				FPlane(UpdateMessage.boneMatrices[i][1], UpdateMessage.boneMatrices[i][5], UpdateMessage.boneMatrices[i][9], UpdateMessage.boneMatrices[i][13]),
+				FPlane(UpdateMessage.boneMatrices[i][2], UpdateMessage.boneMatrices[i][6], UpdateMessage.boneMatrices[i][10], UpdateMessage.boneMatrices[i][14]),
+				FPlane(UpdateMessage.boneMatrices[i][3], UpdateMessage.boneMatrices[i][7], UpdateMessage.boneMatrices[i][11], UpdateMessage.boneMatrices[i][15]));
 
-			Pos = s_TransformMat.TransformPosition(Pos) * 100;
-			Rot = FRotator(-Rot.Yaw - 90, -Rot.Roll, Rot.Pitch);
+			auto Pos = FVector(UpdateMessage.boneMatrices[i][12], UpdateMessage.boneMatrices[i][13], UpdateMessage.boneMatrices[i][14]) * 100;
+			auto Rot = BoneMatrix.Rotator();
 
-			BoneTransforms.Push(FTransform(Rot, Pos, Scl));
+			BoneTransforms.Push(FTransform(Rot, Pos, FTransform(BoneMatrix).GetScale3D()));
 			BoneIndicesToNames.Add(i, FString(UpdateMessage.boneNames[i]));
 		}
 
@@ -403,6 +400,8 @@ void FGensUpdateThread::procMsgCameraUpdate()
 
 	AsyncTask(ENamedThreads::GameThread, [&]
 	{
+		if (!IsValid(GensCommon) && IsValid(GensCommon->GetWorld()) && GensCommon->GetWorld()->IsGameWorld()) return;
+		
 		const auto Pos = s_TransformMat.TransformPosition(
 			FVector(CameraMessage.posX * 100, CameraMessage.posY * 100, CameraMessage.posZ * 100));
 		const auto Tgt = s_TransformMat.TransformPosition(
@@ -429,10 +428,18 @@ FGensUpdateThread::~FGensUpdateThread()
 
 uint32 FGensUpdateThread::Run()
 {
-	while (true)
+	while (m_Timeout < 60)
 	{
 		processMessages();
+
+		if (!(IsValid(GensCommon) && IsValid(GensCommon->GetWorld()) && GensCommon->GetWorld()->IsGameWorld()))
+		{
+			m_Timeout++;
+			FPlatformProcess::Sleep(0.016);
+		}
 	}
+
+	return 0;
 }
 
 FGensUpdateThread* FGensUpdateThread::GensUpdateInit(UGensCommon* InGensCommon)

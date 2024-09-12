@@ -30,6 +30,7 @@ private:
 	TMap<int, FString> BoneIndicesToNames;
 
 	void SetBoneTransforms();
+	FTransform GetComponentTransform(UGensPoseableMeshComponent* Mesh, int BoneIdx);
 	
 protected:
 	// Called when the game starts or when spawned

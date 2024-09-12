@@ -28,6 +28,7 @@ private:
 
 	uint32 m_frame = 0;
 	uint32 m_nextFrame = 1;
+	uint32 m_Timeout = 0;
 	bool m_shouldPresent = false;
 	
 	void processMessages();

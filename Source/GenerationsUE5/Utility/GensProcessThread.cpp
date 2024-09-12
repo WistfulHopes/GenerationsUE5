@@ -17,7 +17,9 @@ uint32 FGensProcessThread::Run()
 {
 	WaitForSingleObject(GensHandle, INFINITE);
 
-	//FGenericPlatformMisc::RequestExit(false);
+#if UE_BUILD_SHIPPING
+	FGenericPlatformMisc::RequestExit(false);
+#endif
 	
 	return 0;
 }
