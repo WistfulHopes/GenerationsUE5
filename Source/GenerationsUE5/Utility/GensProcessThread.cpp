@@ -11,6 +11,7 @@ FGensProcessThread::~FGensProcessThread()
 {
 	delete Thread;
 	Thread = nullptr;
+	Runnable = nullptr;
 }
 
 uint32 FGensProcessThread::Run()

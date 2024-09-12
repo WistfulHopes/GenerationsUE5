@@ -373,11 +373,13 @@ void FGensUpdateThread::procMsgSonicUpdate()
 				FPlane(UpdateMessage.boneMatrices[i][0], UpdateMessage.boneMatrices[i][4], UpdateMessage.boneMatrices[i][8], UpdateMessage.boneMatrices[i][12]),
 				FPlane(UpdateMessage.boneMatrices[i][1], UpdateMessage.boneMatrices[i][5], UpdateMessage.boneMatrices[i][9], UpdateMessage.boneMatrices[i][13]),
 				FPlane(UpdateMessage.boneMatrices[i][2], UpdateMessage.boneMatrices[i][6], UpdateMessage.boneMatrices[i][10], UpdateMessage.boneMatrices[i][14]),
-				FPlane(UpdateMessage.boneMatrices[i][3], UpdateMessage.boneMatrices[i][7], UpdateMessage.boneMatrices[i][11], UpdateMessage.boneMatrices[i][15]));
+				FPlane(UpdateMessage.boneMatrices[i][3], UpdateMessage.boneMatrices[i][7], UpdateMessage.boneMatrices[i][11], UpdateMessage.boneMatrices[i][15])).Inverse();
 
-			auto Pos = FVector(UpdateMessage.boneMatrices[i][12], UpdateMessage.boneMatrices[i][13], UpdateMessage.boneMatrices[i][14]) * 100;
-			auto Rot = BoneMatrix.Rotator();
-
+			auto Pos = s_TransformMat.TransformPosition(FVector(BoneMatrix.M[0][3], BoneMatrix.M[1][3], BoneMatrix.M[2][3])) * 100;
+			Pos = FVector(-Pos.Y, Pos.X, Pos.Z);
+			auto Rot = (s_TransformMat * BoneMatrix).Rotator();
+			Rot = FRotator(Rot.Yaw, Rot.Roll, Rot.Pitch - 90);
+			
 			BoneTransforms.Push(FTransform(Rot, Pos, FTransform(BoneMatrix).GetScale3D()));
 			BoneIndicesToNames.Add(i, FString(UpdateMessage.boneNames[i]));
 		}
@@ -424,6 +426,7 @@ FGensUpdateThread::~FGensUpdateThread()
 {
 	delete Thread;
 	Thread = nullptr;
+	Runnable = nullptr;
 }
 
 uint32 FGensUpdateThread::Run()
